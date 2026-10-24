@@ -79,6 +79,30 @@ jobs:
             fi
           done
 
+      - name: Apply minimal build-blocker fixes in extracted copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ["PROJECT_DIR"])
+          strings = root / "scripts/ui/ui_strings.gd"
+          if strings.exists():
+              s = strings.read_text(encoding="utf-8")
+              duplicate = ', "caravans":"القوافل", "more":"المزيد"'
+              if duplicate in s:
+                  s = s.replace(duplicate, ', "more":"المزيد"', 1)
+              strings.write_text(s, encoding="utf-8")
+          ui = root / "scripts/ui.gd"
+          if ui.exists():
+              s = ui.read_text(encoding="utf-8")
+              s = s.replace('var parts := row.split("|", false, 1);', 'var parts: PackedStringArray = row.split("|", false, 1);')
+              s = s.replace('var particles := {"low": 8, "medium": 20, "high": 40}.get(quality, 20)', 'var particles: int = int({"low": 8, "medium": 20, "high": 40}.get(quality, 20))')
+              ui.write_text(s, encoding="utf-8")
+          print("Applied narrow compatibility fixes to extracted build copy only.")
+          PY
+
       - name: Configure Android export preset
         shell: bash
         run: |
