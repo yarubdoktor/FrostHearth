@@ -1,0 +1,23 @@
+name: Recover FrostHearth Source
+on:
+  workflow_dispatch:
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/extract-source
+      - name: Extract source ZIP
+        run: |
+          mkdir -p recovered-source
+          unzip -q FrostHearth_Profile_Settings_Nav_v2.zip -d recovered-source
+          test -n "$(find recovered-source -type f -print -quit)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FrostHearth-Recovered-Source
+          path: recovered-source/
+          if-no-files-found: error
+          retention-days: 14
