@@ -101,7 +101,17 @@ jobs:
               s = s.replace('var parts := row.split("|", false, 1);', 'var parts: PackedStringArray = row.split("|", false, 1);')
               s = s.replace('var particles := {"low": 8, "medium": 20, "high": 40}.get(quality, 20)', 'var particles: int = int({"low": 8, "medium": 20, "high": 40}.get(quality, 20))')
               ui.write_text(s, encoding="utf-8")
-          print("Applied narrow compatibility fixes to extracted build copy only.")
+          state = root / "scripts/game_state.gd"
+          if state.exists():
+              s = state.read_text(encoding="utf-8")
+              old_upgrade = "func start_upgrade(i: int) -> bool:\n\tvar p: Dictionary = plots[i]"
+              new_upgrade = "func start_upgrade(i: int) -> bool:\n\tif i < 0 or i >= plots.size() or i >= PLOT_COUNT:\n\t\treturn false\n\tif not is_plot_unlocked(i):\n\t\ttoast.emit(\"تحتاج نار الضيافة إلى المستوى %d لفتح قطعة الأرض\" % plot_unlock_level(i), true)\n\t\treturn false\n\tvar p: Dictionary = plots[i]"
+              if old_upgrade in s:
+                  s = s.replace(old_upgrade, new_upgrade, 1)
+              else:
+                  raise SystemExit("Could not find expected start_upgrade block; refusing an unsafe patch.")
+              state.write_text(s, encoding="utf-8")
+          print("Applied compatibility fixes and stage-2 plot safety guard to extracted build copy only.")
           PY
 
       - name: Configure Android export preset
