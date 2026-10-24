@@ -49,6 +49,7 @@ jobs:
           test -n "$TEMPLATE_DIR" || { echo "::error::Android export templates were not found in the downloaded archive."; exit 1; }
           cp "$TEMPLATE_DIR"/android_debug.apk "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
           cp "$TEMPLATE_DIR"/android_release.apk "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
+          cp "$TEMPLATE_DIR"/android_source.zip "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
 
       - name: Extract FrostHearth v2 project
         shell: bash
