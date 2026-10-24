@@ -168,12 +168,12 @@ jobs:
               if any(n.startswith("android/") for n in names):
                   z.extractall(project)
               else:
-                  (project / "android").mkdir(parents=True, exist_ok=True)
-                  z.extractall(project / "android")
-          android = project / "android"
+                  (project / "android" / "build").mkdir(parents=True, exist_ok=True)
+                  z.extractall(project / "android" / "build")
+          android = project / "android" / "build"
           print("Installed Android template files:", [p.name for p in list(android.iterdir())[:30]] if android.exists() else [])
-          if not android.exists() or not any(android.iterdir()):
-              raise SystemExit("Android build template extraction produced no project files.")
+          if not android.exists() or not (android / "build.gradle").exists():
+              raise SystemExit("Android build template extraction produced no build.gradle in android/build.")
           PY
 
       - name: Export Android APK
