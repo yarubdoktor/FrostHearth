@@ -1,6 +1,11 @@
 name: Recover FrostHearth Source
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - recovery/extract-source
+    paths:
+      - '.github/workflows/recover-frosthearth-source.yml'
 jobs:
   recover:
     runs-on: ubuntu-latest
