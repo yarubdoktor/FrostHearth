@@ -37,6 +37,19 @@ jobs:
           use-dotnet: false
           install-android-export-templates: true
 
+      - name: Install matching Godot export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/share/godot/export_templates/4.4.1.stable"
+          curl -L --fail --retry 3 "https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz" -o /tmp/godot-templates.tpz
+          mkdir -p /tmp/godot-templates
+          unzip -q /tmp/godot-templates.tpz -d /tmp/godot-templates
+          TEMPLATE_DIR="$(find /tmp/godot-templates -type f -name android_debug.apk -print -quit | xargs -r dirname)"
+          test -n "$TEMPLATE_DIR" || { echo "::error::Android export templates were not found in the downloaded archive."; exit 1; }
+          cp "$TEMPLATE_DIR"/android_debug.apk "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
+          cp "$TEMPLATE_DIR"/android_release.apk "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
+
       - name: Extract FrostHearth v2 project
         shell: bash
         run: |
