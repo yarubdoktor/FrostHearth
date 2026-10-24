@@ -68,6 +68,17 @@ jobs:
           echo "PROJECT_DIR=$(dirname "$PROJECT_FILE")" >> "$GITHUB_ENV"
           echo "Found Godot project: $PROJECT_FILE"
 
+      - name: Diagnose failing Godot scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in scripts/ui/components/full_screen_panel.gd scripts/ui.gd scripts/world_map_screen.gd; do
+            if [ -f "$PROJECT_DIR/$file" ]; then
+              echo "===== $file ====="
+              nl -ba "$PROJECT_DIR/$file" | sed -n '1,100p'
+            fi
+          done
+
       - name: Configure Android export preset
         shell: bash
         run: |
