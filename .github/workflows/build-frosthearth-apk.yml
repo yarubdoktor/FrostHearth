@@ -13,7 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -24,12 +24,17 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Extract FrostHearth v2 ZIP
+      - name: Set up Godot and Android export templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.4.1
+          use-dotnet: false
+          install-android-export-templates: true
+
+      - name: Extract FrostHearth v2 project
         shell: bash
         run: |
           set -euo pipefail
@@ -39,52 +44,74 @@ jobs:
           }
           mkdir -p source
           unzip -q "FrostHearth_Profile_Settings_Nav_v2.zip" -d source
-          echo "Extracted ZIP contents:"
-          find source -maxdepth 3 -type f | head -100
-
-      - name: Locate web app
-        shell: bash
-        run: |
-          set -euo pipefail
-          ROOT="$GITHUB_WORKSPACE/source"
-          WEB_ROOT=""
-          for candidate in "$ROOT" "$ROOT/www" "$ROOT/dist" "$ROOT/build" "$ROOT/public"; do
-            if [ -f "$candidate/index.html" ]; then WEB_ROOT="$candidate"; break; fi
-          done
-          if [ -z "$WEB_ROOT" ]; then
-            WEB_ROOT="$(find "$ROOT" -type f -name index.html -not -path '*/node_modules/*' -not -path '*/android/*' -print -quit | xargs -r dirname)"
-          fi
-          test -n "$WEB_ROOT" -a -f "$WEB_ROOT/index.html" || {
-            echo "::error::ZIP does not contain a discoverable index.html web app."
+          PROJECT_FILE="$(find "$GITHUB_WORKSPACE/source" -type f -name project.godot -print -quit)"
+          test -n "$PROJECT_FILE" || {
+            echo "::error::Could not find project.godot in the ZIP."
             exit 1
           }
-          echo "WEB_ROOT=$WEB_ROOT" >> "$GITHUB_ENV"
+          echo "PROJECT_DIR=$(dirname "$PROJECT_FILE")" >> "$GITHUB_ENV"
+          echo "Found Godot project: $PROJECT_FILE"
 
-      - name: Build Android APK with Capacitor
+      - name: Configure Android export preset
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$GITHUB_WORKSPACE/wrapper/www"
-          cp -a "$WEB_ROOT"/. "$GITHUB_WORKSPACE/wrapper/www/"
-          cd "$GITHUB_WORKSPACE/wrapper"
-          npm init -y
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
-          cat > capacitor.config.json <<'EOF'
-          {
-            "appId": "com.frosthearth.game",
-            "appName": "FrostHearth",
-            "webDir": "www"
-          }
+          mkdir -p "$PROJECT_DIR/build"
+          if [ ! -f "$PROJECT_DIR/export_presets.cfg" ]; then
+            cat > "$PROJECT_DIR/export_presets.cfg" <<'EOF'
+          [preset.0]
+          name="Android"
+          platform="Android"
+          runnable=true
+          dedicated_server=false
+          custom_features=""
+          export_filter="all_resources"
+          include_filter=""
+          exclude_filter=""
+          export_path="build/FrostHearth.apk"
+          encryption_include_filters=""
+          encryption_exclude_filters=""
+          encrypt_pck=false
+          encrypt_directory=false
+
+          [preset.0.options]
+          custom_template/debug=""
+          custom_template/release=""
+          gradle_build/use_gradle_build=false
+          gradle_build/export_format=0
+          gradle_build/min_sdk="23"
+          gradle_build/target_sdk="35"
+          architectures/armeabi-v7a=false
+          architectures/arm64-v8a=true
+          architectures/x86=false
+          architectures/x86_64=false
+          version/code=1
+          version/name="2.0"
+          package/unique_name="com.frosthearth.game"
+          package/name="FrostHearth"
+          package/signed=true
+          permissions/internet=true
           EOF
-          npx cap add android
-          npx cap sync android
-          cd android
-          chmod +x ./gradlew
-          ./gradlew assembleDebug
-          APK="$(find app/build/outputs/apk/debug -type f -name '*.apk' -print -quit)"
-          test -n "$APK" || { echo "::error::Gradle finished but no APK was produced."; exit 1; }
+          fi
+
+      - name: Import project resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --editor --path "$PROJECT_DIR" --quit
+
+      - name: Export Android APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          godot --headless --path . --export-debug "Android" build/FrostHearth.apk
+          test -s build/FrostHearth.apk || {
+            echo "::error::Godot export finished without producing the APK."
+            exit 1
+          }
           mkdir -p "$GITHUB_WORKSPACE/apk-output"
-          cp "$APK" "$GITHUB_WORKSPACE/apk-output/FrostHearth-Profile-Settings-v2.apk"
+          cp build/FrostHearth.apk "$GITHUB_WORKSPACE/apk-output/FrostHearth-Profile-Settings-v2.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
