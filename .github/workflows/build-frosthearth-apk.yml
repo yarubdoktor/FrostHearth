@@ -1,0 +1,95 @@
+name: Build FrostHearth Profile Settings APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "FrostHearth_Profile_Settings_Nav_v2.zip"
+      - ".github/workflows/build-frosthearth-apk.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Extract FrostHearth v2 ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "FrostHearth_Profile_Settings_Nav_v2.zip" || {
+            echo "::error::FrostHearth_Profile_Settings_Nav_v2.zip is missing."
+            exit 1
+          }
+          mkdir -p source
+          unzip -q "FrostHearth_Profile_Settings_Nav_v2.zip" -d source
+          echo "Extracted ZIP contents:"
+          find source -maxdepth 3 -type f | head -100
+
+      - name: Locate web app
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$GITHUB_WORKSPACE/source"
+          WEB_ROOT=""
+          for candidate in "$ROOT" "$ROOT/www" "$ROOT/dist" "$ROOT/build" "$ROOT/public"; do
+            if [ -f "$candidate/index.html" ]; then WEB_ROOT="$candidate"; break; fi
+          done
+          if [ -z "$WEB_ROOT" ]; then
+            WEB_ROOT="$(find "$ROOT" -type f -name index.html -not -path '*/node_modules/*' -not -path '*/android/*' -print -quit | xargs -r dirname)"
+          fi
+          test -n "$WEB_ROOT" -a -f "$WEB_ROOT/index.html" || {
+            echo "::error::ZIP does not contain a discoverable index.html web app."
+            exit 1
+          }
+          echo "WEB_ROOT=$WEB_ROOT" >> "$GITHUB_ENV"
+
+      - name: Build Android APK with Capacitor
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/wrapper/www"
+          cp -a "$WEB_ROOT"/. "$GITHUB_WORKSPACE/wrapper/www/"
+          cd "$GITHUB_WORKSPACE/wrapper"
+          npm init -y
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.frosthearth.game",
+            "appName": "FrostHearth",
+            "webDir": "www"
+          }
+          EOF
+          npx cap add android
+          npx cap sync android
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+          APK="$(find app/build/outputs/apk/debug -type f -name '*.apk' -print -quit)"
+          test -n "$APK" || { echo "::error::Gradle finished but no APK was produced."; exit 1; }
+          mkdir -p "$GITHUB_WORKSPACE/apk-output"
+          cp "$APK" "$GITHUB_WORKSPACE/apk-output/FrostHearth-Profile-Settings-v2.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FrostHearth-Profile-Settings-v2-APK
+          path: apk-output/FrostHearth-Profile-Settings-v2.apk
+          if-no-files-found: error
+          retention-days: 14
