@@ -156,11 +156,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          godot --headless --editor --path "$PROJECT_DIR" --install-android-build-template --quit
-          test -d "$PROJECT_DIR/android/build" || {
-            echo "::error::Godot did not install the Android build template into the project."
-            exit 1
-          }
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import os
+          project = Path(os.environ["PROJECT_DIR"])
+          archive = Path.home() / ".local/share/godot/export_templates/4.4.1.stable/android_source.zip"
+          with ZipFile(archive) as z:
+              names = z.namelist()
+              print("Android template entries:", names[:20])
+              if any(n.startswith("android/") for n in names):
+                  z.extractall(project)
+              else:
+                  (project / "android").mkdir(parents=True, exist_ok=True)
+                  z.extractall(project / "android")
+          android = project / "android"
+          print("Installed Android template files:", [p.name for p in list(android.iterdir())[:30]] if android.exists() else [])
+          if not android.exists() or not any(android.iterdir()):
+              raise SystemExit("Android build template extraction produced no project files.")
+          PY
 
       - name: Export Android APK
         shell: bash
