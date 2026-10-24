@@ -152,6 +152,16 @@ jobs:
           set -euo pipefail
           godot --headless --editor --path "$PROJECT_DIR" --quit
 
+      - name: Install Android build template into project
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --editor --path "$PROJECT_DIR" --install-android-build-template --quit
+          test -d "$PROJECT_DIR/android/build" || {
+            echo "::error::Godot did not install the Android build template into the project."
+            exit 1
+          }
+
       - name: Export Android APK
         shell: bash
         run: |
