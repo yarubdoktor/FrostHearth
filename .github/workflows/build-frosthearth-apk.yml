@@ -72,10 +72,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in scripts/ui/components/full_screen_panel.gd scripts/ui.gd scripts/world_map_screen.gd; do
+          for file in scripts/ui/ui_strings.gd scripts/ui.gd; do
             if [ -f "$PROJECT_DIR/$file" ]; then
               echo "===== $file ====="
-              nl -ba "$PROJECT_DIR/$file" | sed -n '1,100p'
+              if [ "$file" = "scripts/ui.gd" ]; then nl -ba "$PROJECT_DIR/$file" | sed -n '385,465p'; else nl -ba "$PROJECT_DIR/$file" | sed -n '1,240p'; fi
             fi
           done
 
