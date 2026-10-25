@@ -1,10 +1,10 @@
-name: Build FrostHearth Profile Settings APK
+name: Build FrostHearth Hearth64 GLB Linking APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - "FrostHearth_Profile_Settings_Nav_v2.zip"
+      - "FrostHearth_Hearth64_GLB_Linking.zip"
       - ".github/workflows/build-frosthearth-apk.yml"
 
 permissions:
@@ -51,16 +51,16 @@ jobs:
           cp "$TEMPLATE_DIR"/android_release.apk "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
           cp "$TEMPLATE_DIR"/android_source.zip "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
 
-      - name: Extract FrostHearth v2 project
+      - name: Extract FrostHearth Hearth64 GLB Linking project
         shell: bash
         run: |
           set -euo pipefail
-          test -f "FrostHearth_Profile_Settings_Nav_v2.zip" || {
-            echo "::error::FrostHearth_Profile_Settings_Nav_v2.zip is missing."
+          test -f "FrostHearth_Hearth64_GLB_Linking.zip" || {
+            echo "::error::FrostHearth_Hearth64_GLB_Linking.zip is missing."
             exit 1
           }
           mkdir -p source
-          unzip -q "FrostHearth_Profile_Settings_Nav_v2.zip" -d source
+          unzip -q "FrostHearth_Hearth64_GLB_Linking.zip" -d source
           PROJECT_FILE="$(find "$GITHUB_WORKSPACE/source" -type f -name project.godot -print -quit)"
           test -n "$PROJECT_FILE" || {
             echo "::error::Could not find project.godot in the ZIP."
@@ -161,12 +161,12 @@ jobs:
             exit 1
           }
           mkdir -p "$GITHUB_WORKSPACE/apk-output"
-          cp build/FrostHearth.apk "$GITHUB_WORKSPACE/apk-output/FrostHearth-Profile-Settings-v2.apk"
+          cp build/FrostHearth.apk "$GITHUB_WORKSPACE/apk-output/FrostHearth-Hearth64-GLB-Linking.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: FrostHearth-Profile-Settings-v2-APK
-          path: apk-output/FrostHearth-Profile-Settings-v2.apk
+          name: FrostHearth-Hearth64-GLB-Linking-APK
+          path: apk-output/FrostHearth-Hearth64-GLB-Linking.apk
           if-no-files-found: error
           retention-days: 14
